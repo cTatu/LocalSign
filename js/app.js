@@ -9,6 +9,12 @@ import { hashByteRange, buildCmsDer } from './cms.js';
 import { preCheck, sanitizeBase } from './verify.js';
 import { ERRORS } from './errors.js';
 const $ = (id) => document.getElementById(id);
+// Preview render scale (CSS px per PDF point = PREVIEW_SCALE * 96 / 72).
+// Kept small so the page fits without scrolling; click mapping stays exact
+// because placement rects are derived from this same constant.
+const PREVIEW_SCALE = 0.5;
+const PLACED_W_PT = 150;
+const PLACED_H_PT = 50;
 $('statusEl').textContent = 'Ready — select a PDF and your .p12 to begin.';
 pdfjs.GlobalWorkerOptions.workerSrc = '../lib/pdf.worker.min.mjs';
 async function renderPreview(pdfBytes, pageNum) {
@@ -16,13 +22,14 @@ async function renderPreview(pdfBytes, pageNum) {
   // must receive a copy — the caller's bytes are needed downstream for signing.
   const doc = await pdfjs.getDocument({ data: pdfBytes.slice() }).promise;
   const page = await doc.getPage(pageNum);
-  const viewport = page.getViewport({ scale: 1.5, rotation: 0 });
+  const viewport = page.getViewport({ scale: PREVIEW_SCALE, rotation: 0 });
   const canvas = $('previewCanvas');
   canvas.width = viewport.width; canvas.height = viewport.height;
   await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
   canvas.onclick = (ev) => {
     const r = canvas.getBoundingClientRect();
-    window.__previewClick = { x: ev.clientX - r.left, y: ev.clientY - r.top, w: 150, h: 40, scale: 1.5 };
+    const cssPerPt = PREVIEW_SCALE * 96 / 72;
+    window.__previewClick = { x: ev.clientX - r.left, y: ev.clientY - r.top, w: PLACED_W_PT * cssPerPt, h: PLACED_H_PT * cssPerPt, scale: PREVIEW_SCALE };
   };
   const sel = $('pageSelect');
   sel.innerHTML = '';
