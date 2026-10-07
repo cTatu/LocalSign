@@ -9,9 +9,9 @@ import { hashByteRange, buildCmsDer } from './cms.js';
 import { preCheck, sanitizeBase } from './verify.js';
 import { ERRORS } from './errors.js';
 const $ = (id) => document.getElementById(id);
-// Preview render scale (CSS px per PDF point = PREVIEW_SCALE * 96 / 72).
-// Kept small so the page fits without scrolling; click mapping stays exact
-// because placement rects are derived from this same constant.
+// Preview render scale: canvas px per PDF point. Click/drag mapping divides
+// by this same constant (see cssToPdfRect), so placement stays exact.
+// Kept small so the page fits without scrolling.
 const PREVIEW_SCALE = 0.5;
 const PLACED_W_PT = 150;
 const PLACED_H_PT = 50;
@@ -63,7 +63,7 @@ async function renderPreview(pdfBytes, pageNum) {
     const p = toCanvas(ev);
     const box = normalizeDrag(dragStart.x, dragStart.y, p.x, p.y);
     dragStart = null;
-    const cssPerPt = PREVIEW_SCALE * 96 / 72;
+    const cssPerPt = PREVIEW_SCALE;
     if (!box) {
       // Simple click → default-size box centered on the point.
       window.__previewClick = { x: p.x - (PLACED_W_PT * cssPerPt) / 2, y: p.y - (PLACED_H_PT * cssPerPt) / 2, w: PLACED_W_PT * cssPerPt, h: PLACED_H_PT * cssPerPt, scale: PREVIEW_SCALE };

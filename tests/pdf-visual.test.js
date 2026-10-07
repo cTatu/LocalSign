@@ -9,7 +9,12 @@ describe('visual rect', () => {
     expect(MARGIN).toBe(36);
   });
   it('css to pdf flips y', () => {
-    expect(cssToPdfRect(0, 0, 96, 48, 1, { x: 0, y: 0, h: 792 })).toEqual([0, 792 - 36, 72, 792]);
+    expect(cssToPdfRect(0, 0, 96, 48, 1, { x: 0, y: 0, h: 792 })).toEqual([0, 744, 96, 792]);
+  });
+  it('maps preview px to points by 1/scale (no 96dpi factor)', () => {
+    // 612x792pt page previewed at 0.5 -> 306x396px canvas. Drag (50,300,150,50)
+    // must land at [100,92,400,192]pt, not shrunk toward the origin.
+    expect(cssToPdfRect(50, 300, 150, 50, 0.5, { x: 0, y: 0, h: 792 })).toEqual([100, 92, 400, 192]);
   });
   it('escapes parens', () => {
     expect(escapePdfText('a(b)\\c')).toBe('a\\(b\\)\\\\c');

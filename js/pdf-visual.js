@@ -9,7 +9,10 @@ export function buildRectBottomRight(pageW, pageH) {
   return [x1, y1, x1 + DEFAULT_RECT_W, y1 + DEFAULT_RECT_H];
 }
 export function cssToPdfRect(cssX, cssY, cssW, cssH, scale, crop) {
-  const k = 72 / (96 * scale);
+  // pdf.js maps points -> pixels linearly by `scale` (612pt * 0.5 = 306px),
+  // so points = canvasPx / scale. (A previous 72/(96*scale) factor wrongly
+  // mixed in 96-DPI CSS sizing and shrank every rect 0.75x toward the origin.)
+  const k = 1 / scale;
   const pdfX = crop.x + cssX * k;
   const pdfW = cssW * k;
   const pdfH = cssH * k;
