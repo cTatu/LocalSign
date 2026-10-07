@@ -54,12 +54,22 @@ button#signBtn:hover { background: #0049d6; }
 }
 .actionBar button#signBtn { margin-top: 0; width: 100%; }
 .previewRow { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
+.previewWrap { position: relative; display: inline-block; }
 #previewCanvas {
+  display: block;
   border: 1px solid #ccc;
   border-radius: 6px;
   max-width: 100%;
   background: #fff;
   min-height: 80px;
+  cursor: crosshair;
+  touch-action: none;
+}
+#selOverlay {
+  position: absolute;
+  border: 2px dashed #0b5fff;
+  background: rgba(11, 95, 255, 0.12);
+  pointer-events: none;
 }
 .previewSide { display: flex; flex-direction: column; gap: 0.5rem; }
 .hint { font-size: 0.85rem; color: #555; max-width: 220px; }

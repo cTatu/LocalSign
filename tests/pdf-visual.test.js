@@ -1,6 +1,6 @@
 // tests/pdf-visual.test.js
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_RECT_W, DEFAULT_RECT_H, MARGIN, buildRectBottomRight, cssToPdfRect, escapePdfText, addVisualPlaceholder } from '../js/pdf-visual.js';
+import { DEFAULT_RECT_W, DEFAULT_RECT_H, MARGIN, buildRectBottomRight, cssToPdfRect, escapePdfText, normalizeDrag, addVisualPlaceholder } from '../js/pdf-visual.js';
 describe('visual rect', () => {
   it('bottom-right with margins', () => {
     expect(buildRectBottomRight(612, 792)).toEqual([426, 36, 576, 86]);
@@ -22,8 +22,7 @@ describe('visual rect', () => {
     const { addVisualPlaceholder } = await import('../js/pdf-visual.js');
     await expect(addVisualPlaceholder(d, { pageIndex: 0, rect: [10, 10, 160, 60], text: 'T' })).rejects.toThrow('ROTATED_NOT_SUPPORTED');
   });
-  it('merges into a pre-existing AcroForm (no instanceof crash)', async () => {
-    const { PDFDocument } = await import('../lib/pdf-lib.esm.js');
+  it('merges into a pre-existing AcroForm (no instanceof crash)', async () => {    const { PDFDocument } = await import('../lib/pdf-lib.esm.js');
     const d = await PDFDocument.create();
     const p = d.addPage([612, 792]);
     const form = d.getForm();
@@ -38,5 +37,11 @@ describe('visual rect', () => {
     expect(text).toMatch(/\/FT\s*\/Sig/);
     expect(text).toMatch(/\/FT\s*\/Tx/);
     expect(text).toMatch(/\/SigFlags\s+3/);
+  });
+  it('normalizeDrag normalizes any direction, rejects tiny drags', () => {
+    expect(normalizeDrag(10, 10, 100, 60)).toEqual({ x: 10, y: 10, w: 90, h: 50 });
+    expect(normalizeDrag(100, 60, 10, 10)).toEqual({ x: 10, y: 10, w: 90, h: 50 });
+    expect(normalizeDrag(10, 10, 15, 12)).toBe(null);
+    expect(normalizeDrag(10, 10, 10, 10)).toBe(null);
   });
 });

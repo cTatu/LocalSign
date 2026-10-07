@@ -19,6 +19,12 @@ export function cssToPdfRect(cssX, cssY, cssW, cssH, scale, crop) {
 export function escapePdfText(s) {
   return s.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
 }
+export function normalizeDrag(x0, y0, x1, y1, minPx = 8) {
+  const w = Math.abs(x1 - x0);
+  const h = Math.abs(y1 - y0);
+  if (w < minPx || h < minPx) return null;
+  return { x: Math.min(x0, x1), y: Math.min(y0, y1), w, h };
+}
 export async function addVisualPlaceholder(pdfDoc, { pageIndex, rect, text, imageBytes }) {
   const page = pdfDoc.getPage(pageIndex);
   if (page.getRotation().angle !== 0) throw new Error('ROTATED_NOT_SUPPORTED');

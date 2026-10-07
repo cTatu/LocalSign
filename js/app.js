@@ -3,7 +3,7 @@ import { PDFDocument } from '../lib/pdf-lib.esm.js';
 import * as pdfjs from '../lib/pdf.min.mjs';
 import { checkFileGuards } from './guards.js';
 import { loadP12, clearCert } from './cert.js';
-import { addVisualPlaceholder, buildRectBottomRight, cssToPdfRect, saveBase } from './pdf-visual.js';
+import { addVisualPlaceholder, buildRectBottomRight, cssToPdfRect, normalizeDrag, saveBase } from './pdf-visual.js';
 import { appendPlaceholder, patchByteRange, patchContents } from './byterange.js';
 import { hashByteRange, buildCmsDer } from './cms.js';
 import { preCheck, sanitizeBase } from './verify.js';
@@ -24,18 +24,84 @@ async function renderPreview(pdfBytes, pageNum) {
   const page = await doc.getPage(pageNum);
   const viewport = page.getViewport({ scale: PREVIEW_SCALE, rotation: 0 });
   const canvas = $('previewCanvas');
+  const overlay = $('selOverlay');
   canvas.width = viewport.width; canvas.height = viewport.height;
   await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-  canvas.onclick = (ev) => {
+  // Selection is measured in displayed CSS px, then mapped back to canvas px
+  // (canvas.width / rect.width) so CSS scaling never skews placement.
+  const toCanvas = (ev) => {
     const r = canvas.getBoundingClientRect();
+    const k = canvas.width / r.width;
+    return { x: (ev.clientX - r.left) * k, y: (ev.clientY - r.top) * k };
+  };
+  let dragStart = null;
+  canvas.onpointerdown = (ev) => {
+    const p = toCanvas(ev);
+    dragStart = p;
+    canvas.setPointerCapture(ev.pointerId);
+    overlay.hidden = false;
+    overlay.style.left = `${ev.clientX - canvas.getBoundingClientRect().left}px`;
+    overlay.style.top = `${ev.clientY - canvas.getBoundingClientRect().top}px`;
+    overlay.style.width = '0px';
+    overlay.style.height = '0px';
+  };
+  canvas.onpointermove = (ev) => {
+    if (!dragStart) return;
+    const p = toCanvas(ev);
+    const r = canvas.getBoundingClientRect();
+    const x0 = dragStart.x * (r.width / canvas.width);
+    const x1 = p.x * (r.width / canvas.width);
+    const y0 = dragStart.y * (r.width / canvas.width);
+    const y1 = p.y * (r.width / canvas.width);
+    overlay.style.left = `${Math.min(x0, x1)}px`;
+    overlay.style.top = `${Math.min(y0, y1)}px`;
+    overlay.style.width = `${Math.abs(x1 - x0)}px`;
+    overlay.style.height = `${Math.abs(y1 - y0)}px`;
+  };
+  canvas.onpointerup = (ev) => {
+    if (!dragStart) return;
+    const p = toCanvas(ev);
+    const box = normalizeDrag(dragStart.x, dragStart.y, p.x, p.y);
+    dragStart = null;
     const cssPerPt = PREVIEW_SCALE * 96 / 72;
-    window.__previewClick = { x: ev.clientX - r.left, y: ev.clientY - r.top, w: PLACED_W_PT * cssPerPt, h: PLACED_H_PT * cssPerPt, scale: PREVIEW_SCALE };
+    if (!box) {
+      // Simple click → default-size box centered on the point.
+      window.__previewClick = { x: p.x - (PLACED_W_PT * cssPerPt) / 2, y: p.y - (PLACED_H_PT * cssPerPt) / 2, w: PLACED_W_PT * cssPerPt, h: PLACED_H_PT * cssPerPt, scale: PREVIEW_SCALE };
+    } else {
+      window.__previewClick = { x: box.x, y: box.y, w: box.w, h: box.h, scale: PREVIEW_SCALE };
+    }
   };
   const sel = $('pageSelect');
   sel.innerHTML = '';
   for (let i = 1; i <= doc.numPages; i++) { const o = document.createElement('option'); o.value = String(i); o.textContent = `Page ${i}`; sel.appendChild(o); }
   return { viewport, pageCount: doc.numPages };
 }
+function clearSelection() {
+  // Called only when the file or page changes — never during signing, so a
+  // drag selection made on the preview survives until Sign is pressed.
+  window.__previewClick = null;
+  const overlay = $('selOverlay');
+  if (overlay) overlay.hidden = true;
+}
+async function previewFile(pageNum) {
+  const status = $('statusEl');
+  const f = $('fileInput').files[0];
+  if (!f) return;
+  try {
+    const buf = new Uint8Array(await f.arrayBuffer());
+    const g = checkFileGuards(buf, f.name);
+    if (!g.ok) throw new Error(g.code);
+    clearSelection();
+    await renderPreview(buf, pageNum);
+  } catch (e) {
+    status.textContent = ERRORS[e.message] || `${e.name || 'Error'}: ${e.message || e}`;
+  }
+}
+$('fileInput').addEventListener('change', () => { previewFile(1); });
+$('pageSelect').addEventListener('change', () => {
+  const n = Math.max(1, parseInt(($('pageSelect').value || '1'), 10));
+  previewFile(n);
+});
 let certState = null;
 $('signBtn').addEventListener('click', async () => {
   const status = $('statusEl');
