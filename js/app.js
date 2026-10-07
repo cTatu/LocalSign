@@ -28,11 +28,16 @@ async function renderPreview(pdfBytes, pageNum) {
   canvas.width = viewport.width; canvas.height = viewport.height;
   await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
   // Selection is measured in displayed CSS px, then mapped back to canvas px
-  // (canvas.width / rect.width) so CSS scaling never skews placement.
+  // (canvas.width / content-box width) so CSS scaling never skews placement.
+  // getBoundingClientRect includes the canvas border, which must be excluded
+  // or every placement shifts by borderWidth / scale (2pt at scale 0.5).
   const toCanvas = (ev) => {
     const r = canvas.getBoundingClientRect();
-    const k = canvas.width / r.width;
-    return { x: (ev.clientX - r.left) * k, y: (ev.clientY - r.top) * k };
+    const bl = canvas.clientLeft;
+    const bt = canvas.clientTop;
+    const kx = canvas.width / (r.width - 2 * bl);
+    const ky = canvas.height / (r.height - 2 * bt);
+    return { x: (ev.clientX - r.left - bl) * kx, y: (ev.clientY - r.top - bt) * ky };
   };
   let dragStart = null;
   canvas.onpointerdown = (ev) => {
@@ -49,10 +54,14 @@ async function renderPreview(pdfBytes, pageNum) {
     if (!dragStart) return;
     const p = toCanvas(ev);
     const r = canvas.getBoundingClientRect();
-    const x0 = dragStart.x * (r.width / canvas.width);
-    const x1 = p.x * (r.width / canvas.width);
-    const y0 = dragStart.y * (r.width / canvas.width);
-    const y1 = p.y * (r.width / canvas.width);
+    const fx = (r.width - 2 * canvas.clientLeft) / canvas.width;
+    const fy = (r.height - 2 * canvas.clientTop) / canvas.height;
+    const ox = canvas.clientLeft;
+    const oy = canvas.clientTop;
+    const x0 = ox + dragStart.x * fx;
+    const x1 = ox + p.x * fx;
+    const y0 = oy + dragStart.y * fy;
+    const y1 = oy + p.y * fy;
     overlay.style.left = `${Math.min(x0, x1)}px`;
     overlay.style.top = `${Math.min(y0, y1)}px`;
     overlay.style.width = `${Math.abs(x1 - x0)}px`;
