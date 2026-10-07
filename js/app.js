@@ -12,7 +12,7 @@ const $ = (id) => document.getElementById(id);
 // Preview render scale: canvas px per PDF point. Click/drag mapping divides
 // by this same constant (see cssToPdfRect), so placement stays exact.
 // Kept small so the page fits without scrolling.
-const PREVIEW_SCALE = 0.5;
+const PREVIEW_SCALE = 0.7;
 const PLACED_W_PT = 150;
 const PLACED_H_PT = 50;
 $('statusEl').textContent = 'Ready — select a PDF and your .p12 to begin.';

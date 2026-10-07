@@ -37,7 +37,9 @@ certificate (PAdES B-B). Private keys and document bytes never leave the tab.
    `toCanvas` excludes the canvas border and compensates CSS scaling.
 3. **`lookupMaybe` needs a real class** (`PDFDict`/`PDFArray`) — never
    `undefined`; fails only when the key exists (e.g. pre-existing AcroForm).
-4. **Zero network:** no `fetch`/workers-to-remote; CSP stays `connect-src 'none'`.
+4. **Same-origin network only:** browser may call same-origin `/ocsp`
+   (allowlisted OCSP/TSA responders: serials/hashes only, never keys/docs);
+   no other `fetch`/workers-to-remote; CSP is `connect-src 'self'`.
 5. **RSA-only, `/Rotate 0`-only, PDF-only MVP** — reject others with the
    matching `ERRORS` code, don't attempt support silently.
 
