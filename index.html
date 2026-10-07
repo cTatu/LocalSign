@@ -7,18 +7,33 @@
 <title>Sign PDF locally</title>
 <link rel="stylesheet" href="css/styles.css"/>
 <script src="lib/forge.min.js"></script>
-<canvas id="previewCanvas"></canvas>
-<select id="pageSelect"></select>
 </head>
 <body>
 <main>
-<h1>Sign PDF locally (MVP)</h1>
-<p id="privacyNote">Keys + documents never leave this tab. No uploads. Pre-check only — trust decision is Adobe Reader. No CRL/OCSP in MVP.</p>
-<input type="file" id="fileInput" accept=".pdf"/>
-<input type="file" id="certInput" accept=".p12,.pfx"/>
-<input type="password" id="certPass" placeholder="P12 password" autocomplete="off"/>
+<h1>Sign PDF locally</h1>
+<p id="privacyNote">Keys and documents never leave this tab. No uploads. The in-page check is a pre-check only &mdash; trust Adobe Reader. No revocation checks in this MVP.</p>
+<section class="card">
+<h2>1. Document</h2>
+<label class="file">PDF file <input type="file" id="fileInput" accept=".pdf"/></label>
+</section>
+<section class="card">
+<h2>2. Certificate</h2>
+<label class="file">.p12 / .pfx file <input type="file" id="certInput" accept=".p12,.pfx"/></label>
+<label class="file">Password <input type="password" id="certPass" placeholder="P12 password" autocomplete="off"/></label>
+</section>
+<section class="card">
+<h2>3. Preview &amp; sign</h2>
+<div class="previewRow">
+<canvas id="previewCanvas"></canvas>
+<div class="previewSide">
+<label>Page <select id="pageSelect"></select></label>
+<p class="hint">Click the preview to place the signature. Leave it to use the bottom-right corner.</p>
 <button id="signBtn">Sign</button>
-<pre id="statusEl"></pre>
+</div>
+</div>
+</section>
+<h2>Status</h2>
+<pre id="statusEl">Loading…</pre>
 </main>
 <script type="module" src="js/app.js"></script>
 </body>

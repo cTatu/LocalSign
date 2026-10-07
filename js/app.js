@@ -9,6 +9,7 @@ import { hashByteRange, buildCmsDer } from './cms.js';
 import { preCheck, sanitizeBase } from './verify.js';
 import { ERRORS } from './errors.js';
 const $ = (id) => document.getElementById(id);
+$('statusEl').textContent = 'Ready — select a PDF and your .p12 to begin.';
 pdfjs.GlobalWorkerOptions.workerSrc = '../lib/pdf.worker.min.mjs';
 async function renderPreview(pdfBytes, pageNum) {
   // NOTE: pdf.js transfers (neuters) the buffer handed to getDocument, so it
