@@ -1,5 +1,6 @@
-# Sign PDF locally (MVP)
-Zero-backend static page. Keys + docs never leave tab heap (connect-src 'none'). Pre-check only — trust decision is Adobe Reader. No CRL/OCSP in MVP.
+# ![LocalSign](assets/logo.svg)
+
+Sign PDFs in your browser with your own digital certificate. Zero backend — keys and documents never leave the tab. Pre-check only — trust decision is Adobe Reader. No CRL/OCSP in MVP.
 ## Run
 `npm install && python3 -m http.server 8000` → `http://localhost:8000`
 ## Vendor + SRI

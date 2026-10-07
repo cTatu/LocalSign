@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="LocalSign mark">
+  <path d="M16 2 L28 7 V16 C28 24 22 29 16 30 C10 29 4 24 4 16 V7 Z"
+        fill="none" stroke="#1E3A8A" stroke-width="3" stroke-linejoin="round"/>
+  <polyline points="11,16 15,20 22,12"
+        fill="none" stroke="#B45309" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
