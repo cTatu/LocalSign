@@ -32,19 +32,27 @@ async function renderPreview(pdfBytes, pageNum) {
 let certState = null;
 $('signBtn').addEventListener('click', async () => {
   const status = $('statusEl');
+  // Stage tracker: on failure the status shows WHERE it broke (step + error
+  // name), so raw browser errors like NotFoundError can be traced to a step.
+  let stage = 'starting';
+  const at = (s) => { stage = s; status.textContent = s + '…'; };
   try {
     if (location.protocol === 'file:') throw new Error('INSECURE_CONTEXT');
     if (!window.isSecureContext) throw new Error('INSECURE_CONTEXT');
     const f = $('fileInput').files[0];
     if (!f) throw new Error('NO_FILE');
+    at('Reading PDF');
     const buf = new Uint8Array(await f.arrayBuffer());
     const g = checkFileGuards(buf, f.name);
     if (!g.ok) throw new Error(g.code);
+    at('Rendering preview');
     await renderPreview(buf, 1);
     const p12File = $('certInput').files[0];
     if (!p12File) throw new Error('BAD_PASSWORD_OR_CORRUPT_P12');
+    at('Reading certificate');
     certState = await loadP12(new Uint8Array(await p12File.arrayBuffer()), $('certPass').value);
     if (new Date() < certState.notBefore || new Date() > certState.notAfter) status.textContent = 'Warning: cert outside validity — proceeding.\n';
+    at('Preparing signature appearance');
     const pdfDoc = await PDFDocument.load(buf);
     const pages = pdfDoc.getPages();
     const selIdx = Math.max(0, (parseInt(($('pageSelect').value || '1'), 10) - 1));
@@ -66,14 +74,18 @@ $('signBtn').addEventListener('click', async () => {
       rect = cssToPdfRect(previewPos.x, previewPos.y, previewPos.w, previewPos.h, previewPos.scale, crop);
     }
     const { widgetObjNum, apObjNum, pageObjNum } = await addVisualPlaceholder(pdfDoc, { pageIndex: pageIdx, rect, text: certState.subjectCN || 'Signer' });
+    at('Building signature');
     const baseBytes = await saveBase(pdfDoc);
     const meta = appendPlaceholder(baseBytes, { widgetObjNum, rect, pageObjNum, apObjNum });
     // PAdES order: ByteRange values are part of the hashed [0,X) segment, so
     // the FINAL values must be written BEFORE hashing (same-width, in place).
     const gapFinal = patchByteRange(meta.withGap, meta);
+    at('Hashing document');
     const hash = await hashByteRange(gapFinal, meta.X, meta.Y, meta.Z);
+    at('Signing');
     const cms = buildCmsDer(hash, certState);
     const signed = patchContents(gapFinal, cms, meta);
+    at('Verifying and downloading');
     const pc = preCheck(signed);
     const blob = new Blob([signed], { type: 'application/pdf' });
     const a = document.createElement('a');
@@ -82,7 +94,8 @@ $('signBtn').addEventListener('click', async () => {
     a.click();
     status.textContent += pc.label + '\n' + pc.checks.map(c => `${c.pass ? 'PASS' : 'FAIL'} ${c.name}: ${c.detail}`).join('\n');
   } catch (e) {
-    status.textContent = ERRORS[e.message] || String((e && e.message) || e);
+    const known = ERRORS[e.message];
+    status.textContent = known || `Failed at step "${stage}": ${e.name || 'Error'}: ${e.message || e}`;
   } finally {
     clearCert(certState); certState = null;
     const pw = $('certPass'); if (pw) pw.value = '';
