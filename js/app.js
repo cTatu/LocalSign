@@ -4,14 +4,16 @@ import * as pdfjs from '../lib/pdf.min.mjs';
 import { checkFileGuards } from './guards.js';
 import { loadP12, clearCert } from './cert.js';
 import { addVisualPlaceholder, buildRectBottomRight, cssToPdfRect, saveBase } from './pdf-visual.js';
-import { appendPlaceholder, patchRevision } from './byterange.js';
+import { appendPlaceholder, patchByteRange, patchContents } from './byterange.js';
 import { hashByteRange, buildCmsDer } from './cms.js';
 import { preCheck, sanitizeBase } from './verify.js';
 import { ERRORS } from './errors.js';
 const $ = (id) => document.getElementById(id);
 pdfjs.GlobalWorkerOptions.workerSrc = '../lib/pdf.worker.min.mjs';
 async function renderPreview(pdfBytes, pageNum) {
-  const doc = await pdfjs.getDocument({ data: pdfBytes }).promise;
+  // NOTE: pdf.js transfers (neuters) the buffer handed to getDocument, so it
+  // must receive a copy — the caller's bytes are needed downstream for signing.
+  const doc = await pdfjs.getDocument({ data: pdfBytes.slice() }).promise;
   const page = await doc.getPage(pageNum);
   const viewport = page.getViewport({ scale: 1.5, rotation: 0 });
   const canvas = $('previewCanvas');
@@ -65,9 +67,12 @@ $('signBtn').addEventListener('click', async () => {
     const { widgetObjNum, apObjNum, pageObjNum } = await addVisualPlaceholder(pdfDoc, { pageIndex: pageIdx, rect, text: certState.subjectCN || 'Signer' });
     const baseBytes = await saveBase(pdfDoc);
     const meta = appendPlaceholder(baseBytes, { widgetObjNum, rect, pageObjNum, apObjNum });
-    const hash = await hashByteRange(meta.withGap, meta.X, meta.Y, meta.Z);
+    // PAdES order: ByteRange values are part of the hashed [0,X) segment, so
+    // the FINAL values must be written BEFORE hashing (same-width, in place).
+    const gapFinal = patchByteRange(meta.withGap, meta);
+    const hash = await hashByteRange(gapFinal, meta.X, meta.Y, meta.Z);
     const cms = buildCmsDer(hash, certState);
-    const signed = patchRevision(meta.withGap, cms, meta);
+    const signed = patchContents(gapFinal, cms, meta);
     const pc = preCheck(signed);
     const blob = new Blob([signed], { type: 'application/pdf' });
     const a = document.createElement('a');

@@ -78,17 +78,24 @@ export function appendPlaceholder(baseBytes, { widgetObjNum, rect, pageObjNum, a
   const X = lt; const Y = gt + 1; const Z = withGap.length;
   return { withGap, contentsLt: X, contentsGtEnd: Y, brPos: brAt, X, Y, Z };
 }
-export function patchRevision(withGap, cmsDer, meta) {
+export function patchByteRange(withGap, meta) {
+  const out = new Uint8Array(withGap);
+  const br = buildByteRangeString(meta.X, meta.Y, meta.Z);
+  const enc = new TextEncoder().encode(br);
+  for (let i = 0; i < enc.length; i++) out[meta.brPos + '/ByteRange '.length + i] = enc[i];
+  return out;
+}
+export function patchContents(withGap, cmsDer, meta) {
   if (cmsDer.length > 16384) throw new Error('SIGNATURE_TOO_LARGE');
   let hex = '';
   for (let i = 0; i < cmsDer.length; i++) hex += cmsDer[i].toString(16).padStart(2, '0');
   hex = hex.toUpperCase().padEnd(HEX_LEN, '0');
   const out = new Uint8Array(withGap);
   for (let i = 0; i < HEX_LEN; i++) out[meta.contentsLt + 1 + i] = hex.charCodeAt(i);
-  const br = buildByteRangeString(meta.X, meta.Y, meta.Z);
-  const enc = new TextEncoder().encode(br);
-  for (let i = 0; i < enc.length; i++) out[meta.brPos + '/ByteRange '.length + i] = enc[i];
   return out;
+}
+export function patchRevision(withGap, cmsDer, meta) {
+  return patchContents(patchByteRange(withGap, meta), cmsDer, meta);
 }
 export function validateSplice(patched, meta) {
   const text = new TextDecoder('latin1').decode(patched.slice(Math.max(0, meta.brPos - 16), meta.brPos + 64));
