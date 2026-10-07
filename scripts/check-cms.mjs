@@ -5,7 +5,7 @@ const f = process.argv[2];
 if (!f) { console.error('usage: node scripts/check-cms.mjs cms.der'); process.exit(2); }
 const der = fs.readFileSync(f);
 const hex = Buffer.from(der).toString('hex').toUpperCase();
-if (!hex.includes('2A864886F70D0109100247')) { console.error('missing signingCertificateV2'); process.exit(1); }
+if (!hex.includes('2A864886F70D010910022F')) { console.error('missing signingCertificateV2'); process.exit(1); }
 const txt = execFileSync('openssl', ['cms', '-print', '-inform', 'DER', '-in', f], { encoding: 'utf8' });
 if (!/1\.2\.840\.113549\.1\.9\.16\.2\.47/.test(txt)) { console.error('openssl missing V2'); process.exit(1); }
 if (!/messageDigest/i.test(txt)) { console.error('openssl missing messageDigest'); process.exit(1); }
