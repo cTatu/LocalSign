@@ -1,6 +1,6 @@
 // tests/pdf-visual.test.js
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_RECT_W, DEFAULT_RECT_H, MARGIN, buildRectBottomRight, cssToPdfRect, escapePdfText } from '../js/pdf-visual.js';
+import { DEFAULT_RECT_W, DEFAULT_RECT_H, MARGIN, buildRectBottomRight, cssToPdfRect, escapePdfText, addVisualPlaceholder } from '../js/pdf-visual.js';
 describe('visual rect', () => {
   it('bottom-right with margins', () => {
     expect(buildRectBottomRight(612, 792)).toEqual([426, 36, 576, 86]);
@@ -21,5 +21,22 @@ describe('visual rect', () => {
     p.setRotation({ type: 'degrees', angle: 90 });
     const { addVisualPlaceholder } = await import('../js/pdf-visual.js');
     await expect(addVisualPlaceholder(d, { pageIndex: 0, rect: [10, 10, 160, 60], text: 'T' })).rejects.toThrow('ROTATED_NOT_SUPPORTED');
+  });
+  it('merges into a pre-existing AcroForm (no instanceof crash)', async () => {
+    const { PDFDocument } = await import('../lib/pdf-lib.esm.js');
+    const d = await PDFDocument.create();
+    const p = d.addPage([612, 792]);
+    const form = d.getForm();
+    const tf = form.createTextField('existing.field');
+    tf.addToPage(p, { x: 50, y: 700, width: 200, height: 24 });
+    const bytes = await d.save({ useObjectStreams: false });
+    const d2 = await PDFDocument.load(bytes);
+    const { widgetObjNum } = await addVisualPlaceholder(d2, { pageIndex: 0, rect: [426, 36, 576, 86], text: 'T' });
+    expect(widgetObjNum).toBeGreaterThan(0);
+    const out = await d2.save({ useObjectStreams: false });
+    const text = new TextDecoder('latin1').decode(out);
+    expect(text).toMatch(/\/FT\s*\/Sig/);
+    expect(text).toMatch(/\/FT\s*\/Tx/);
+    expect(text).toMatch(/\/SigFlags\s+3/);
   });
 });

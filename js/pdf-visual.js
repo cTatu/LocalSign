@@ -1,5 +1,5 @@
 // js/pdf-visual.js
-import { PDFName, PDFNumber, PDFHexString, PDFString, StandardFonts } from '../lib/pdf-lib.esm.js';
+import { PDFName, PDFNumber, PDFHexString, PDFString, PDFDict, PDFArray, StandardFonts } from '../lib/pdf-lib.esm.js';
 export const DEFAULT_RECT_W = 150;
 export const DEFAULT_RECT_H = 50;
 export const MARGIN = 36;
@@ -50,9 +50,19 @@ export async function addVisualPlaceholder(pdfDoc, { pageIndex, rect, text, imag
   const widgetRef = context.register(widget);
   page.node.addAnnot(widgetRef);
   const acroKey = PDFName.of('AcroForm');
-  let acro = pdfDoc.catalog.lookupMaybe(acroKey, undefined);
-  if (!acro) pdfDoc.catalog.set(acroKey, context.obj({ Fields: [widgetRef], SigFlags: PDFNumber.of(3) }));
-  else { const fields = acro.lookupMaybe(PDFName.of('Fields'), undefined); if (fields) fields.push(widgetRef); acro.set(PDFName.of('SigFlags'), PDFNumber.of(3)); }
+  // NOTE: lookupMaybe requires a real class (it does `value instanceof Type`);
+  // passing undefined only works when the key is absent. cancelar-2.pdf has a
+  // pre-existing AcroForm, which crashed with "Right-hand side of
+  // 'instanceof' is not an object".
+  const acro = pdfDoc.catalog.lookupMaybe(acroKey, PDFDict);
+  if (!acro) {
+    pdfDoc.catalog.set(acroKey, context.obj({ Fields: [widgetRef], SigFlags: PDFNumber.of(3) }));
+  } else {
+    const fields = acro.lookupMaybe(PDFName.of('Fields'), PDFArray);
+    if (fields) fields.push(widgetRef);
+    else acro.set(PDFName.of('Fields'), context.obj([widgetRef]));
+    acro.set(PDFName.of('SigFlags'), PDFNumber.of(3));
+  }
   const widgetObjNum = widgetRef.objectNumber;
   const apObjNum = formRef.objectNumber;
   const pageObjNum = page.ref.objectNumber;
