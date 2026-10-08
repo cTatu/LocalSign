@@ -66,8 +66,7 @@ describe('ocsp proxy', () => {
     expect(r.status).toBe(400);
     expect(await r.text()).toBe('HOST_NOT_ALLOWED');
   });
-  it('rejects oversize bodies', async () => {
-    const r = await fetch(`http://127.0.0.1:${appPort}/ocsp?url=${encodeURIComponent(up())}`, {
+  it('rejects oversize bodies', async () => {    const r = await fetch(`http://127.0.0.1:${appPort}/ocsp?url=${encodeURIComponent(up())}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/ocsp-request' },
       body: Buffer.alloc(70000, 7),
@@ -89,5 +88,24 @@ describe('static', () => {
   it('404s missing files', async () => {
     const r = await fetch(`http://127.0.0.1:${appPort}/nope-xyz`);
     expect(r.status).toBe(404);
+  });
+});
+
+describe('cors', () => {
+  it('answers preflight with ACAO', async () => {
+    const r = await fetch(`http://127.0.0.1:${appPort}/ocsp?url=${encodeURIComponent(up())}`, {
+      method: 'OPTIONS',
+    });
+    expect(r.status).toBe(204);
+    expect(r.headers.get('access-control-allow-origin')).toBe('*');
+  });
+  it('stamps ACAO on proxied responses', async () => {
+    const r = await fetch(`http://127.0.0.1:${appPort}/ocsp?url=${encodeURIComponent(up())}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/ocsp-request' },
+      body: Buffer.from([0x30, 0x03, 0x02, 0x01, 0x05]),
+    });
+    expect(r.status).toBe(200);
+    expect(r.headers.get('access-control-allow-origin')).toBe('*');
   });
 });

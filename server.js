@@ -141,12 +141,28 @@ export function createServer() {
         return;
       }
       if (url.pathname === '/ocsp') {
+        // Cross-origin frontend (static site) must be able to read responses,
+        // so the proxy answers CORS itself. Upstream responders never see the
+        // browser; only serials/hashes transit here.
+        const cors = {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Max-Age': '86400',
+        };
+        if (req.method === 'OPTIONS') {
+          res.writeHead(204, cors); res.end();
+          return;
+        }
         const responder = url.searchParams.get('url') || '';
         if (req.method === 'POST') {
           const body = await readBody(req);
           const out = await forward(responder, 'POST', body,
             req.headers['content-type'] || 'application/ocsp-request');
-          res.writeHead(out.status, { 'Content-Type': out.type });
+          res.writeHead(out.status, {
+            'Content-Type': out.type,
+            'Access-Control-Allow-Origin': '*',
+          });
           res.end(out.body);
           return;
         }
@@ -158,7 +174,10 @@ export function createServer() {
             return;
           }
           const out = await forward(responder, 'POST', body, 'application/ocsp-request');
-          res.writeHead(out.status, { 'Content-Type': out.type });
+          res.writeHead(out.status, {
+            'Content-Type': out.type,
+            'Access-Control-Allow-Origin': '*',
+          });
           res.end(out.body);
           return;
         }

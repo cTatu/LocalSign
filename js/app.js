@@ -8,6 +8,8 @@ import { appendPlaceholder, patchByteRange, patchContents } from './byterange.js
 import { hashByteRange, buildCmsDer } from './cms.js';
 import { preCheck, sanitizeBase } from './verify.js';
 import { ERRORS } from './errors.js';
+import { wakeBackend } from './api.js';
+wakeBackend();
 const $ = (id) => document.getElementById(id);
 // Preview render scale: canvas px per PDF point. Click/drag mapping divides
 // by this same constant (see cssToPdfRect), so placement stays exact.

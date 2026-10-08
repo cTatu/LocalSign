@@ -1,11 +1,13 @@
 # AGENTS.md — LocalSign
 
-Static, zero-backend web app: sign PDFs in-browser with your own X.509
+Static web app + tiny Node API: sign PDFs in-browser with your own X.509
 certificate (PAdES B-B). Private keys and document bytes never leave the tab.
 
 ## Quick start
 
-- Serve: `python3 -m http.server 8000` → `http://localhost:8000` (never `file://`)
+- Serve (frontend only): `python3 -m http.server 8000` → `http://localhost:8000`
+  (never `file://`); full stack: `node server.js` (`:8000`, serves static +
+  `/ocsp` + `/healthz`)
 - Test: `npm test` (vitest, must stay green)
 - Full cryptographic gate: sign in the browser, then
   `node scripts/check-cms.mjs /tmp/cms.der` + Adobe Reader (normative)
@@ -42,6 +44,16 @@ certificate (PAdES B-B). Private keys and document bytes never leave the tab.
    no other `fetch`/workers-to-remote; CSP is `connect-src 'self'`.
 5. **RSA-only, `/Rotate 0`-only, PDF-only MVP** — reject others with the
    matching `ERRORS` code, don't attempt support silently.
+
+## Split deploy (frontend + API)
+
+- Frontend = static site (instant load); backend = Node web service
+  (`server.js`: static + allowlisted `/ocsp` + `/healthz`).
+- Browser calls the API at `https://localsign-api.onrender.com`
+  (`js/api.js`: `window.LOCALSIGN_API` override, `wakeBackend()` ping on boot
+  so the free tier is warm; CSP allowlists exactly that host).
+- `/ocsp` answers CORS itself (`ACAO: *`, OPTIONS 204); upstream responders
+  never see keys/docs/passwords.
 
 ## Rules
 

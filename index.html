@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; worker-src 'self' blob:; object-src 'none'; connect-src 'self'"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; worker-src 'self' blob:; object-src 'none'; connect-src 'self' https://localsign-api.onrender.com"/>
 <title>LocalSign — Sign PDFs locally</title>
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg"/>
 <link rel="stylesheet" href="css/styles.css"/>
@@ -13,7 +13,7 @@
 <main>
 <h1 class="brand"><img src="assets/mark.svg" alt="" width="34" height="34"/> LocalSign</h1>
 <p class="tagline">Sign PDFs in your browser. Nothing leaves this tab.</p>
-<p id="privacyNote">Keys and documents never leave this tab. No uploads. The in-page check is a pre-check only &mdash; trust Adobe Reader. No revocation checks in this MVP.</p>
+<p id="privacyNote">Keys and documents never leave this tab. The only network calls are same-origin revocation/timestamp lookups (certificate serials and hashes only — never keys or documents). The in-page check is a pre-check only &mdash; trust Adobe Reader.</p>
 <section class="card">
 <h2>1. Document</h2>
 <label class="file">PDF file <input type="file" id="fileInput" accept=".pdf"/></label>

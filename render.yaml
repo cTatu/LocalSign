@@ -1,9 +1,16 @@
 services:
   - type: web
-    name: localsign
-    env: node
+    name: localsign-frontend
+    env: static
     repo: https://github.com/cTatu/LocalSign
     branch: main
     buildCommand: ""
+    staticPublishPath: .
+  - type: web
+    name: localsign-api
+    env: node
+    repo: https://github.com/cTatu/LocalSign
+    branch: main
+    buildCommand: npm install --omit=dev
     startCommand: node server.js
     healthCheckPath: /healthz
