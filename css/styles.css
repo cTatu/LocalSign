@@ -44,6 +44,10 @@ h1.brand img { display: block; }
   padding: 0.3rem 0.85rem;
 }
 .badges li:first-child { color: var(--green); }
+details.seo { margin-top: 2.5rem; font-size: 0.85rem; opacity: 0.85; }
+details.seo summary { cursor: pointer; color: var(--navy); font-weight: 600; }
+details.seo .faq h3 { font-size: 0.9rem; margin: 0.9rem 0 0.2rem; }
+details.seo .faq p { margin: 0.2rem 0 0.6rem; }
 .tagline { color: var(--ink); opacity: 0.75; margin-top: 0; }
 h2 { font-size: 1.05rem; margin: 0 0 0.75rem; color: var(--ink); }
 #privacyNote {

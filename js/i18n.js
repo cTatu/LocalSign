@@ -56,6 +56,17 @@ const ES = {
   chk_noocsp: 'Revocación (OCSP)',
   chk_noocsp_d: 'la comprueba Adobe Reader, no esta página',
   precheck_label: 'Pre-comprobación — la decisión de confianza es Adobe Reader',
+  faq_title: 'Preguntas frecuentes',
+  faq_q1: '¿Es gratis de verdad?',
+  faq_a1: 'Sí: gratis siempre, sin límites, sin registro ni tarjeta.',
+  faq_q2: '¿AutoFirma no funciona, es una alternativa?',
+  faq_a2: 'Sí: sin Java ni instalaciones, todo ocurre en el navegador.',
+  faq_q3: '¿Vale para la administración con mi certificado?',
+  faq_a3: 'Genera firmas PAdES verificables en Adobe Reader, la misma clase que Autofirma.',
+  faq_q4: '¿El PDF y el certificado salen de mi equipo?',
+  faq_a4: 'No: solo seriales y hashes viajan para revocación; la clave privada no sale nunca.',
+  faq_q5: '¿Qué límites tiene?',
+  faq_a5: 'PDF de hasta 25 MB, certificados RSA, una firma por documento. Sin límite de documentos.',
 };
 
 const EN = {
@@ -108,6 +119,17 @@ const EN = {
   chk_noocsp: 'Revocation (OCSP)',
   chk_noocsp_d: 'checked by Adobe Reader, not in-page',
   precheck_label: 'Pre-check only — trust decision is Adobe Reader',
+  faq_title: 'Frequently asked questions',
+  faq_q1: 'Is it really free?',
+  faq_a1: 'Yes: free forever, no limits, no signup, no card.',
+  faq_q2: 'AutoFirma fails — is this an alternative?',
+  faq_a2: 'Yes: no Java, no installers, everything runs in the browser.',
+  faq_q3: 'Does it work with my certificate for official procedures?',
+  faq_a3: 'It produces PAdES signatures verifiable in Adobe Reader, the same class AutoFirma makes.',
+  faq_q4: 'Do my PDF and certificate leave my device?',
+  faq_a4: 'No: only serials and hashes travel for revocation; the private key never leaves.',
+  faq_q5: 'What are the limits?',
+  faq_a5: 'PDFs up to 25 MB, RSA certificates, one signature per document. No document limit.',
 };
 
 const CA = {
@@ -160,6 +182,17 @@ const CA = {
   chk_noocsp: 'Revocació (OCSP)',
   chk_noocsp_d: 'la comprova l\u2019Adobe Reader, no aquesta pàgina',
   precheck_label: 'Pre-comprovació — la decisió de confiança és l\u2019Adobe Reader',
+  faq_title: 'Preguntes freqüents',
+  faq_q1: 'És gratis de veritat?',
+  faq_a1: 'Sí: gratis sempre, sense límits, sense registre ni targeta.',
+  faq_q2: 'L\u2019Autofirma no funciona, és una alternativa?',
+  faq_a2: 'Sí: sense Java ni instal·lacions, tot passa al navegador.',
+  faq_q3: 'Val per a l\u2019administració amb el meu certificat?',
+  faq_a3: 'Genera signatures PAdES verificables a l\u2019Adobe Reader, la mateixa classe que l\u2019Autofirma.',
+  faq_q4: 'El PDF i el certificat surten del meu equip?',
+  faq_a4: 'No: només serials i hashes viatgen per a revocació; la clau privada no surt mai.',
+  faq_q5: 'Quins límits té?',
+  faq_a5: 'PDF de fins a 25 MB, certificats RSA, una signatura per document. Sense límit de documents.',
 };
 
 export const STRINGS = { es: ES, en: EN, ca: CA };
@@ -228,6 +261,19 @@ export function applyI18n() {
     b.classList.toggle('active', active);
     b.setAttribute('aria-pressed', active ? 'true' : 'false');
   });
+  const faq = document.getElementById('faq-ld');
+  if (faq) {
+    const qa = [1, 2, 3, 4, 5].map((n) => ({
+      '@type': 'Question',
+      name: t(`faq_q${n}`),
+      acceptedAnswer: { '@type': 'Answer', text: t(`faq_a${n}`) },
+    }));
+    faq.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: qa,
+    });
+  }
 }
 
 export function initLang() {
