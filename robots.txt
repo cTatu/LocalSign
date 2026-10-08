@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://localsign.onrender.com/sitemap.xml

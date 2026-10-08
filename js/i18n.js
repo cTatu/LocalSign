@@ -166,16 +166,29 @@ export const STRINGS = { es: ES, en: EN, ca: CA };
 
 let current = 'en';
 
-export function detectLang() {
-  try {
-    const stored = typeof localStorage !== 'undefined' && localStorage.getItem('localsign-lang');
-    if (stored && LANGS.includes(stored)) return stored;
-  } catch { /* private mode */ }
-  const nav = typeof navigator !== 'undefined' ? (navigator.language || '') : '';
-  const base = nav.split('-')[0].toLowerCase();
+export function pickLang(stored, navLang, urlLang) {
+  if (stored && LANGS.includes(stored)) return stored;
+  if (urlLang && LANGS.includes(urlLang)) return urlLang;
+  const base = (navLang || '').split('-')[0].toLowerCase();
   if (base === 'ca') return 'ca';
   if (base === 'es') return 'es';
   return 'en';
+}
+
+export function detectLang() {
+  let stored = null;
+  let nav = '';
+  let url = null;
+  try {
+    if (typeof localStorage !== 'undefined') stored = localStorage.getItem('localsign-lang');
+  } catch { /* private mode */ }
+  if (typeof navigator !== 'undefined') nav = navigator.language || '';
+  try {
+    if (typeof window !== 'undefined' && window.location && window.location.search) {
+      url = new URLSearchParams(window.location.search).get('lang');
+    }
+  } catch { /* non-browser */ }
+  return pickLang(stored, nav, url);
 }
 
 export function getLang() {

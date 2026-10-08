@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://localsign.onrender.com/</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://localsign.onrender.com/es/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://localsign.onrender.com/en/"/>
+    <xhtml:link rel="alternate" hreflang="ca" href="https://localsign.onrender.com/ca/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://localsign.onrender.com/"/>
+  </url>
+  <url>
+    <loc>https://localsign.onrender.com/es/</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://localsign.onrender.com/es/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://localsign.onrender.com/en/"/>
+    <xhtml:link rel="alternate" hreflang="ca" href="https://localsign.onrender.com/ca/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://localsign.onrender.com/"/>
+  </url>
+  <url>
+    <loc>https://localsign.onrender.com/en/</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://localsign.onrender.com/es/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://localsign.onrender.com/en/"/>
+    <xhtml:link rel="alternate" hreflang="ca" href="https://localsign.onrender.com/ca/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://localsign.onrender.com/"/>
+  </url>
+  <url>
+    <loc>https://localsign.onrender.com/ca/</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://localsign.onrender.com/es/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://localsign.onrender.com/en/"/>
+    <xhtml:link rel="alternate" hreflang="ca" href="https://localsign.onrender.com/ca/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://localsign.onrender.com/"/>
+  </url>
+</urlset>
