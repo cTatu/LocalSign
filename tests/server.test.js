@@ -1,7 +1,7 @@
 // tests/server.test.js — /ocsp proxy + static behavior (fake upstream, no network).
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import http from 'node:http';
-import { createServer } from '../server.js';
+import { createServer, _resetOcspRate } from '../server.js';
 
 let app;
 let upstream;
@@ -25,7 +25,7 @@ beforeAll(async () => {
     });
   });
   upPort = await listen(upstream);
-  process.env.OCSP_ALLOWLIST = `127.0.0.1,localhost`;
+  process.env.OCSP_ALLOW_LOOPBACK = '1';
   app = createServer();
   appPort = await listen(app);
 });
@@ -33,7 +33,7 @@ beforeAll(async () => {
 afterAll(() => {
   app.close();
   upstream.close();
-  delete process.env.OCSP_ALLOWLIST;
+  delete process.env.OCSP_ALLOW_LOOPBACK;
 });
 
 const up = () => `http://127.0.0.1:${upPort}/ocsp`;
@@ -57,14 +57,15 @@ describe('ocsp proxy', () => {
     expect(seen[0].body.equals(body)).toBe(true);
     expect(seen[0].type).toBe('application/ocsp-request');
   });
-  it('rejects non-allowlisted hosts', async () => {
-    const r = await fetch(`http://127.0.0.1:${appPort}/ocsp?url=${encodeURIComponent('http://evil.example/ocsp')}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/ocsp-request' },
-      body: Buffer.from([1, 2, 3]),
-    });
-    expect(r.status).toBe(400);
-    expect(await r.text()).toBe('HOST_NOT_ALLOWED');
+  it('rejects private-network targets', async () => {
+    for (const bad of ['http://10.0.0.1/ocsp', 'http://169.254.169.254/x', 'ftp://example.com/ocsp']) {
+      const r = await fetch(`http://127.0.0.1:${appPort}/ocsp?url=${encodeURIComponent(bad)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/ocsp-request' },
+        body: Buffer.from([1, 2, 3]),
+      });
+      expect(r.status).toBe(400);
+    }
   });
   it('rejects oversize bodies', async () => {    const r = await fetch(`http://127.0.0.1:${appPort}/ocsp?url=${encodeURIComponent(up())}`, {
       method: 'POST',
@@ -72,6 +73,22 @@ describe('ocsp proxy', () => {
       body: Buffer.alloc(70000, 7),
     });
     expect(r.status).toBe(413);
+  });
+  it('rate-limits floods with 429', async () => {
+    _resetOcspRate();
+    process.env.OCSP_RATE_PER_MIN = '2';
+    const codes = [];
+    for (let i = 0; i < 3; i++) {
+      const r = await fetch(`http://127.0.0.1:${appPort}/ocsp?url=${encodeURIComponent(up())}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/ocsp-request' },
+        body: Buffer.from([9]),
+      });
+      codes.push(r.status);
+      await r.arrayBuffer();
+    }
+    delete process.env.OCSP_RATE_PER_MIN;
+    expect(codes).toEqual([200, 200, 429]);
   });
 });
 

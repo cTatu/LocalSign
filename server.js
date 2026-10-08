@@ -1,36 +1,82 @@
-// server.js — LocalSign Node server: static files + same-origin OCSP proxy.
+// server.js — LocalSign Node server: static files + same-origin OCSP relay.
 //
 // Browsers cannot read OCSP/TSA responses cross-origin (no CORS headers on
-// responders), so /ocsp is a dumb same-origin pipe: it forwards request bytes
-// to an allowlisted responder and streams the response back. It never sees
-// private keys, passwords, or documents — only cert identifiers/hashes.
+// responders), so /ocsp relays request bytes to the responder named in `url`
+// and streams the response back. It never sees private keys, passwords, or
+// documents — only cert identifiers/hashes.
+//
+// Relay guardrails (no allowlist — any public CA must work):
+// http(s) only, DNS must resolve to a public IP (no private/link-local/
+// loopback targets), request <=64KB, response <=1MB, 30 req/min per IP.
+// Private hosts, oversize payloads and floods are rejected with 400/413/429.
 //
 //   POST /ocsp?url=<responder-url>   body: OCSP request DER (<=64KB)
 //   GET  /ocsp?url=<responder-url>&req=<base64url-DER>
 //   GET  /healthz                     -> 200 ok
 //
-// Env: PORT (default 8000), OCSP_ALLOWLIST (comma hostnames).
+// Env: PORT (default 8000), OCSP_RATE_PER_MIN (default 30).
 import http from 'node:http';
 import https from 'node:https';
 import fs from 'node:fs';
 import path from 'node:path';
+import dns from 'node:dns';
+import net from 'node:net';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '8000', 10);
-// Read per call (not at import) so tests and hosting dashboards can inject
-// OCSP_ALLOWLIST at runtime.
-function allowlist() {
-  return new Set(
-    (process.env.OCSP_ALLOWLIST ||
-      'ocspusu.cert.fnmt.es,ocsp.digicert.com,r11.o.lencr.org,freetsa.org')
-      .split(',')
-      .map((h) => h.trim().toLowerCase())
-      .filter(Boolean)
-  );
-}
 const MAX_BODY = 65536;
+const MAX_RESPONSE = 1048576;
 const TIMEOUT_MS = 10000;
+
+function ratePerMin() {
+  return parseInt(process.env.OCSP_RATE_PER_MIN || '30', 10);
+}
+
+// Fixed-window per-IP counter for /ocsp only.
+const buckets = new Map();
+function rateOk(ip) {
+  const now = Date.now();
+  const windowMs = 60000;
+  let b = buckets.get(ip);
+  if (!b || now - b.start >= windowMs) {
+    b = { start: now, n: 0 };
+    buckets.set(ip, b);
+  }
+  b.n += 1;
+  if (buckets.size > 10000) buckets.clear();
+  return b.n <= ratePerMin();
+}
+
+function isPrivateIp(addr) {
+  if (net.isIPv4(addr)) {
+    const [a, b] = addr.split('.').map(Number);
+    return a === 10 || a === 127 || (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) || (a === 169 && b === 254) || a === 0;
+  }
+  const low = addr.toLowerCase();
+  return low === '::1' || low.startsWith('fc') || low.startsWith('fd') ||
+    low.startsWith('fe80') || low === '::';
+}
+
+async function publicHost(hostname) {
+  // Literal IPs are checked directly; names go through DNS first so
+  // private/rebound targets are rejected before any socket opens.
+  if (net.isIP(hostname)) {
+    if (!isPrivateIp(hostname)) return true;
+    // Loopback is private by definition; tests opt in explicitly to run a
+    // fake upstream on 127.0.0.1. Never set this in production.
+    return process.env.OCSP_ALLOW_LOOPBACK === '1' &&
+      (hostname === '127.0.0.1' || hostname === '::1' || hostname.toLowerCase() === 'localhost');
+  }
+  let addrs;
+  try {
+    addrs = await dns.promises.lookup(hostname, { all: true });
+  } catch {
+    return false;
+  }
+  return addrs.length > 0 && addrs.every((a) => !isPrivateIp(a.address));
+}
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -88,20 +134,20 @@ function readBody(req) {
   });
 }
 
-function forward(responderUrl, method, body, inType) {
+async function forward(responderUrl, method, body, inType) {
+  let target;
+  try {
+    target = new URL(responderUrl);
+  } catch {
+    throw new Error('BAD_URL');
+  }
+  if (target.protocol !== 'http:' && target.protocol !== 'https:') {
+    throw new Error('BAD_URL');
+  }
+  if (!(await publicHost(target.hostname))) {
+    throw new Error('PRIVATE_HOST');
+  }
   return new Promise((resolve, reject) => {
-    let target;
-    try {
-      target = new URL(responderUrl);
-    } catch {
-      reject(new Error('BAD_URL'));
-      return;
-    }
-    if ((target.protocol !== 'http:' && target.protocol !== 'https:') ||
-        !allowlist().has(target.hostname.toLowerCase())) {
-      reject(new Error('HOST_NOT_ALLOWED'));
-      return;
-    }
     const lib = target.protocol === 'https:' ? https : http;
     const rq = lib.request(
       {
@@ -118,18 +164,39 @@ function forward(responderUrl, method, body, inType) {
       },
       (rs) => {
         const chunks = [];
-        rs.on('data', (c) => chunks.push(c));
-        rs.on('end', () => resolve({
-          status: rs.statusCode,
-          type: rs.headers['content-type'] || 'application/octet-stream',
-          body: Buffer.concat(chunks),
-        }));
+        let n = 0;
+        let tooBig = false;
+        rs.on('data', (c) => {
+          n += c.length;
+          if (n > MAX_RESPONSE) {
+            tooBig = true;
+            rs.destroy();
+            return;
+          }
+          chunks.push(c);
+        });
+        rs.on('end', () => {
+          if (tooBig) {
+            reject(new Error('UPSTREAM_TOO_LARGE'));
+            return;
+          }
+          resolve({
+            status: rs.statusCode,
+            type: rs.headers['content-type'] || 'application/octet-stream',
+            body: Buffer.concat(chunks),
+          });
+        });
       }
     );
     rq.on('timeout', () => { rq.destroy(); reject(new Error('UPSTREAM_TIMEOUT')); });
     rq.on('error', () => reject(new Error('UPSTREAM_ERROR')));
     rq.end(body);
   });
+}
+
+// Test hook: reset /ocsp rate counters for deterministic tests.
+export function _resetOcspRate() {
+  buckets.clear();
 }
 
 export function createServer() {
@@ -155,6 +222,12 @@ export function createServer() {
           return;
         }
         const responder = url.searchParams.get('url') || '';
+        const clientIp = (req.socket && req.socket.remoteAddress) || 'unknown';
+        if (!rateOk(clientIp)) {
+          res.writeHead(429, { 'Access-Control-Allow-Origin': '*' });
+          res.end('RATE_LIMITED');
+          return;
+        }
         if (req.method === 'POST') {
           const body = await readBody(req);
           const out = await forward(responder, 'POST', body,
@@ -191,7 +264,7 @@ export function createServer() {
       res.writeHead(405); res.end('method not allowed');
     } catch (e) {
       const code = e.message === 'BODY_TOO_LARGE' ? 413
-        : e.message === 'HOST_NOT_ALLOWED' || e.message === 'BAD_URL' ? 400
+        : e.message === 'PRIVATE_HOST' || e.message === 'BAD_URL' ? 400
         : 502;
       res.writeHead(code); res.end(e.message);
     }
