@@ -3,7 +3,7 @@ import { PDFDocument } from '../lib/pdf-lib.esm.js';
 import * as pdfjs from '../lib/pdf.min.mjs';
 import { checkFileGuards } from './guards.js';
 import { loadP12, clearCert } from './cert.js';
-import { addVisualPlaceholder, buildRectBottomRight, cssToPdfRect, moveBox, resizeBox, saveBase } from './pdf-visual.js';
+import { addVisualPlaceholder, buildRectBottomRight, cssToPdfRect, moveBox, resizeBox, clampBox, saveBase } from './pdf-visual.js';
 import { appendPlaceholder, patchByteRange, patchContents } from './byterange.js';
 import { hashByteRange, buildCmsDer } from './cms.js';
 import { preCheck, sanitizeBase } from './verify.js';
