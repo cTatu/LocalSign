@@ -67,6 +67,37 @@ h2 { font-size: 1.05rem; margin: 0 0 0.75rem; color: var(--ink); }
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
 }
 label.file { display: block; margin: 0.5rem 0; font-size: 0.95rem; }
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.pickrow { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.35rem; flex-wrap: wrap; }
+.pickBtn {
+  display: inline-block;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #fff;
+  background: var(--navy);
+  border-radius: 8px;
+  padding: 0.45rem 1.1rem;
+  cursor: pointer;
+}
+label.file:focus-within .pickBtn { outline: 2px solid var(--bronze); outline-offset: 2px; }
+.pickBtn:hover { background: var(--navy-hover); }
+.fileName {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  opacity: 0.75;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+#docCard.dragover { border-color: var(--bronze); box-shadow: 0 0 0 2px var(--bronze); }
 input[type="file"] { display: block; margin-top: 0.25rem; }
 input[type="password"], select {
   font: inherit;

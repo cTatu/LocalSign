@@ -115,11 +115,48 @@ async function previewFile(pageNum) {
     status.textContent = t(e.message) !== e.message ? t(e.message) : `${e.name || 'Error'}: ${e.message || e}`;
   }
 }
-$('fileInput').addEventListener('change', () => { previewFile(1); });
+function showFileName(inputId, labelId) {
+  const input = $(inputId);
+  const label = $(labelId);
+  if (!input || !label) return;
+  const f = input.files[0];
+  if (f) {
+    // Real filename wins over i18n: drop the key so language switches
+    // never overwrite it back to "No file chosen".
+    label.removeAttribute('data-i18n');
+    label.textContent = f.name;
+  } else {
+    label.setAttribute('data-i18n', 'file_none');
+    label.textContent = t('file_none');
+  }
+}
+$('fileInput').addEventListener('change', () => { showFileName('fileInput', 'pdfName'); previewFile(1); });
+$('certInput').addEventListener('change', () => { showFileName('certInput', 'certName'); });
 $('pageSelect').addEventListener('change', () => {
   const n = Math.max(1, parseInt(($('pageSelect').value || '1'), 10));
   previewFile(n);
 });
+{
+  // Drag & drop onto the document card.
+  const card = $('docCard');
+  const stop = (ev) => { ev.preventDefault(); };
+  ['dragenter', 'dragover'].forEach((ev) => card.addEventListener(ev, (e) => {
+    stop(e);
+    card.classList.add('dragover');
+  }));
+  ['dragleave', 'drop'].forEach((ev) => card.addEventListener(ev, (e) => {
+    stop(e);
+    card.classList.remove('dragover');
+  }));
+  card.addEventListener('drop', (e) => {
+    const files = e.dataTransfer && e.dataTransfer.files;
+    if (files && files.length) {
+      $('fileInput').files = files;
+      showFileName('fileInput', 'pdfName');
+      previewFile(1);
+    }
+  });
+}
 let certState = null;
 $('signBtn').addEventListener('click', async () => {
   const status = $('statusEl');

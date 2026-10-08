@@ -44,13 +44,18 @@
 <li data-i18n="badge_local">100% local</li>
 </ul>
 <p id="privacyNote" data-i18n="privacy">Keys and documents never leave this tab. The only network calls are same-origin revocation/timestamp lookups (certificate serials and hashes only — never keys or documents). The in-page check is a pre-check only — trust Adobe Reader.</p>
-<section class="card">
+<section class="card" id="docCard">
 <h2 data-i18n="s1">1. Document</h2>
-<label class="file"><span data-i18n="s1_file">PDF file</span> <input type="file" id="fileInput" accept=".pdf"/></label>
+<label class="file"><span data-i18n="s1_file">PDF file</span>
+<span class="pickrow"><span class="pickBtn" data-i18n="choose">Choose file</span><span class="fileName" id="pdfName" data-i18n="file_none">No file chosen</span></span>
+<input type="file" id="fileInput" class="sr" accept=".pdf"/></label>
+<p class="hint" data-i18n="drop_hint">…or drag &amp; drop your PDF anywhere on this card.</p>
 </section>
 <section class="card">
 <h2 data-i18n="s2">2. Certificate</h2>
-<label class="file"><span data-i18n="s2_cert">.p12 / .pfx file</span> <input type="file" id="certInput" accept=".p12,.pfx"/></label>
+<label class="file"><span data-i18n="s2_cert">.p12 / .pfx file</span>
+<span class="pickrow"><span class="pickBtn" data-i18n="choose_cert">Choose certificate</span><span class="fileName" id="certName" data-i18n="file_none">No file chosen</span></span>
+<input type="file" id="certInput" class="sr" accept=".p12,.pfx"/></label>
 <label class="file"><span data-i18n="s2_pass">Password</span> <input type="password" id="certPass" data-i18n-ph="s2_pass_ph" placeholder="P12 password" autocomplete="off"/></label>
 </section>
 <section class="card">
