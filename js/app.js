@@ -3,7 +3,7 @@ import { PDFDocument } from '../lib/pdf-lib.esm.js';
 import * as pdfjs from '../lib/pdf.min.mjs';
 import { checkFileGuards } from './guards.js';
 import { loadP12, clearCert } from './cert.js';
-import { addVisualPlaceholder, buildRectBottomRight, cssToPdfRect, normalizeDrag, saveBase } from './pdf-visual.js';
+import { addVisualPlaceholder, buildRectBottomRight, cssToPdfRect, moveBox, resizeBox, saveBase } from './pdf-visual.js';
 import { appendPlaceholder, patchByteRange, patchContents } from './byterange.js';
 import { hashByteRange, buildCmsDer } from './cms.js';
 import { preCheck, sanitizeBase } from './verify.js';
@@ -36,58 +36,107 @@ async function renderPreview(pdfBytes, pageNum) {
   const overlay = $('selOverlay');
   canvas.width = viewport.width; canvas.height = viewport.height;
   await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-  // Selection is measured in displayed CSS px, then mapped back to canvas px
-  // (canvas.width / content-box width) so CSS scaling never skews placement.
-  // getBoundingClientRect includes the canvas border, which must be excluded
-  // or every placement shifts by borderWidth / scale (2pt at scale 0.5).
-  const toCanvas = (ev) => {
-    const r = canvas.getBoundingClientRect();
-    const bl = canvas.clientLeft;
-    const bt = canvas.clientTop;
-    const kx = canvas.width / (r.width - 2 * bl);
-    const ky = canvas.height / (r.height - 2 * bt);
-    return { x: (ev.clientX - r.left - bl) * kx, y: (ev.clientY - r.top - bt) * ky };
+  // Persistent selection box: always present, draggable by its body and
+  // resizable by its corner handle — no draw gesture needed, touch-first.
+  // Tapping empty canvas centers the box on the tap. Coordinates live in
+  // canvas px; overlay painting converts to client px (border- and
+  // CSS-scale-aware), PDF mapping divides by PREVIEW_SCALE.
+  const rect = {
+    x: canvas.width - 150 * PREVIEW_SCALE - 36 * PREVIEW_SCALE,
+    y: canvas.height - 50 * PREVIEW_SCALE - 36 * PREVIEW_SCALE,
+    w: 150 * PREVIEW_SCALE,
+    h: 50 * PREVIEW_SCALE,
   };
-  let dragStart = null;
-  canvas.onpointerdown = (ev) => {
-    const p = toCanvas(ev);
-    dragStart = p;
-    canvas.setPointerCapture(ev.pointerId);
+  const factors = () => {
+    const r = canvas.getBoundingClientRect();
+    return {
+      r,
+      fx: (r.width - 2 * canvas.clientLeft) / canvas.width,
+      fy: (r.height - 2 * canvas.clientTop) / canvas.height,
+      ox: canvas.clientLeft,
+      oy: canvas.clientTop,
+    };
+  };
+  const paint = () => {
+    const { fx, fy, ox, oy } = factors();
     overlay.hidden = false;
-    overlay.style.left = `${ev.clientX - canvas.getBoundingClientRect().left}px`;
-    overlay.style.top = `${ev.clientY - canvas.getBoundingClientRect().top}px`;
-    overlay.style.width = '0px';
-    overlay.style.height = '0px';
+    overlay.style.left = `${ox + rect.x * fx}px`;
+    overlay.style.top = `${oy + rect.y * fy}px`;
+    overlay.style.width = `${rect.w * fx}px`;
+    overlay.style.height = `${rect.h * fy}px`;
   };
-  canvas.onpointermove = (ev) => {
-    if (!dragStart) return;
-    const p = toCanvas(ev);
-    const r = canvas.getBoundingClientRect();
-    const fx = (r.width - 2 * canvas.clientLeft) / canvas.width;
-    const fy = (r.height - 2 * canvas.clientTop) / canvas.height;
-    const ox = canvas.clientLeft;
-    const oy = canvas.clientTop;
-    const x0 = ox + dragStart.x * fx;
-    const x1 = ox + p.x * fx;
-    const y0 = oy + dragStart.y * fy;
-    const y1 = oy + p.y * fy;
-    overlay.style.left = `${Math.min(x0, x1)}px`;
-    overlay.style.top = `${Math.min(y0, y1)}px`;
-    overlay.style.width = `${Math.abs(x1 - x0)}px`;
-    overlay.style.height = `${Math.abs(y1 - y0)}px`;
+  const commit = () => {
+    window.__previewClick = { x: rect.x, y: rect.y, w: rect.w, h: rect.h, scale: PREVIEW_SCALE };
   };
-  canvas.onpointerup = (ev) => {
-    if (!dragStart) return;
-    const p = toCanvas(ev);
-    const box = normalizeDrag(dragStart.x, dragStart.y, p.x, p.y);
-    dragStart = null;
-    const cssPerPt = PREVIEW_SCALE;
-    if (!box) {
-      // Simple click → default-size box centered on the point.
-      window.__previewClick = { x: p.x - (PLACED_W_PT * cssPerPt) / 2, y: p.y - (PLACED_H_PT * cssPerPt) / 2, w: PLACED_W_PT * cssPerPt, h: PLACED_H_PT * cssPerPt, scale: PREVIEW_SCALE };
-    } else {
-      window.__previewClick = { x: box.x, y: box.y, w: box.w, h: box.h, scale: PREVIEW_SCALE };
+  const place = (box) => {
+    const next = clampBox(box, canvas.width, canvas.height);
+    rect.x = next.x; rect.y = next.y; rect.w = next.w; rect.h = next.h;
+  };
+  const toCanvas = (ev) => {
+    const { r, fx, fy, ox, oy } = factors();
+    void r;
+    return { x: (ev.clientX - r.left - ox) / fx, y: (ev.clientY - r.top - oy) / fy };
+  };
+  place(rect);
+  paint();
+  commit();
+  let gesture = null;
+  const capture = (el, id) => {
+    try {
+      el.setPointerCapture(id);
+    } catch {
+      // Synthetic events and edge cases (already-released pointers) have no
+      // active pointer to capture; handlers still work via bubbling.
     }
+  };
+  overlay.onpointerdown = (ev) => {
+    ev.stopPropagation();
+    gesture = { mode: 'move', start: toCanvas(ev), orig: { ...rect } };
+    capture(overlay, ev.pointerId);
+  };
+  $('selHandle').onpointerdown = (ev) => {
+    ev.stopPropagation();
+    ev.preventDefault();
+    gesture = { mode: 'resize', start: toCanvas(ev), orig: { ...rect } };
+    capture($('selHandle'), ev.pointerId);
+  };
+  const onMove = (ev) => {
+    if (!gesture) return;
+    const p = toCanvas(ev);
+    const dx = p.x - gesture.start.x;
+    const dy = p.y - gesture.start.y;
+    const next = gesture.mode === 'move'
+      ? moveBox(gesture.orig, canvas.width, canvas.height, dx, dy)
+      : resizeBox(gesture.orig, canvas.width, canvas.height, dx, dy);
+    rect.x = next.x; rect.y = next.y; rect.w = next.w; rect.h = next.h;
+    paint();
+    commit();
+  };
+  const onUp = () => { gesture = null; };
+  overlay.onpointermove = onMove;
+  $('selHandle').onpointermove = onMove;
+  overlay.onpointerup = onUp;
+  overlay.onpointercancel = onUp;
+  $('selHandle').onpointerup = onUp;
+  $('selHandle').onpointercancel = onUp;
+  let tapStart = null;
+  canvas.onpointerdown = (ev) => { tapStart = toCanvas(ev); };
+  canvas.onpointerup = (ev) => {
+    if (!tapStart) return;
+    const p = toCanvas(ev);
+    const moved = Math.hypot(p.x - tapStart.x, p.y - tapStart.y);
+    tapStart = null;
+    if (moved > 8) return;
+    // Simple tap: center the default-size box on the point.
+    const cssPerPt = PREVIEW_SCALE;
+    place({
+      x: p.x - (PLACED_W_PT * cssPerPt) / 2,
+      y: p.y - (PLACED_H_PT * cssPerPt) / 2,
+      w: PLACED_W_PT * cssPerPt,
+      h: PLACED_H_PT * cssPerPt,
+    });
+    paint();
+    commit();
   };
   const sel = $('pageSelect');
   sel.innerHTML = '';

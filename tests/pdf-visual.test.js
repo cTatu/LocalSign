@@ -1,6 +1,6 @@
 // tests/pdf-visual.test.js
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_RECT_W, DEFAULT_RECT_H, MARGIN, buildRectBottomRight, cssToPdfRect, escapePdfText, normalizeDrag, addVisualPlaceholder } from '../js/pdf-visual.js';
+import { DEFAULT_RECT_W, DEFAULT_RECT_H, MARGIN, buildRectBottomRight, cssToPdfRect, escapePdfText, normalizeDrag, logoOps, moveBox, resizeBox, clampBox, addVisualPlaceholder } from '../js/pdf-visual.js';
 describe('visual rect', () => {
   it('bottom-right with margins', () => {
     expect(buildRectBottomRight(612, 792)).toEqual([426, 36, 576, 86]);
@@ -48,5 +48,29 @@ describe('visual rect', () => {
     expect(normalizeDrag(100, 60, 10, 10)).toEqual({ x: 10, y: 10, w: 90, h: 50 });
     expect(normalizeDrag(10, 10, 15, 12)).toBe(null);
     expect(normalizeDrag(10, 10, 10, 10)).toBe(null);
+  });
+  it('logoOps draws shield then check with brand colors', () => {    const ops = logoOps(0, 0, 1).split('\n');
+    expect(ops[0]).toBe('0.118 0.227 0.541 RG');
+    expect(ops).toContain('16 30 m');
+    expect(ops).toContain('h S');
+    expect(ops).toContain('0.706 0.325 0.035 RG');
+    expect(ops[ops.length - 1]).toBe('S');
+    expect(ops.join('\n')).toContain('11 16 m');
+  });
+  it('moveBox translates and clamps to the page', () => {
+    expect(moveBox({ x: 10, y: 10, w: 50, h: 30 }, 400, 400, 20, 30))
+      .toEqual({ x: 30, y: 40, w: 50, h: 30 });
+    expect(moveBox({ x: 370, y: 380, w: 50, h: 30 }, 400, 400, 20, 30))
+      .toEqual({ x: 350, y: 370, w: 50, h: 30 });
+    expect(moveBox({ x: 10, y: 10, w: 50, h: 30 }, 400, 400, -50, -50))
+      .toEqual({ x: 0, y: 0, w: 50, h: 30 });
+  });
+  it('resizeBox grows/shrinks with minimum size', () => {
+    expect(resizeBox({ x: 10, y: 10, w: 50, h: 30 }, 400, 400, 20, 10))
+      .toEqual({ x: 10, y: 10, w: 70, h: 40 });
+    expect(resizeBox({ x: 10, y: 10, w: 50, h: 30 }, 400, 400, -100, -100))
+      .toEqual({ x: 10, y: 10, w: 24, h: 16 });
+    expect(resizeBox({ x: 360, y: 10, w: 50, h: 30 }, 400, 400, 100, 0))
+      .toEqual({ x: 250, y: 10, w: 150, h: 30 });
   });
 });

@@ -22,11 +22,54 @@ export function cssToPdfRect(cssX, cssY, cssW, cssH, scale, crop) {
 export function escapePdfText(s) {
   return s.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
 }
+function num(n) {
+  return String(Math.round(n * 100) / 100);
+}
+// Brand mark as PDF vector ops (shield + check), drawn in an AP content
+// stream. SVG 32-grid mapped with y-flip: X = x0 + x*s, Y = y0 + (32-y)*s.
+export function logoOps(x0, y0, s) {
+  const X = (x) => num(x0 + x * s);
+  const Y = (y) => num(y0 + (32 - y) * s);
+  return [
+    '0.118 0.227 0.541 RG',
+    `${num(3 * s)} w`,
+    `${X(16)} ${Y(2)} m`,
+    `${X(28)} ${Y(7)} l`,
+    `${X(28)} ${Y(16)} l`,
+    `${X(28)} ${Y(24)} ${X(22)} ${Y(29)} ${X(16)} ${Y(30)} c`,
+    `${X(10)} ${Y(29)} ${X(4)} ${Y(24)} ${X(4)} ${Y(16)} c`,
+    `${X(4)} ${Y(7)} l`,
+    'h S',
+    '0.706 0.325 0.035 RG',
+    `${X(11)} ${Y(16)} m`,
+    `${X(15)} ${Y(20)} l`,
+    `${X(22)} ${Y(12)} l`,
+    'S',
+  ].join('\n');
+}
 export function normalizeDrag(x0, y0, x1, y1, minPx = 8) {
   const w = Math.abs(x1 - x0);
   const h = Math.abs(y1 - y0);
   if (w < minPx || h < minPx) return null;
   return { x: Math.min(x0, x1), y: Math.min(y0, y1), w, h };
+}
+// Pure selection-box math (canvas px): move/resize a box, clamped to the
+// page with a minimum size. Overlay handlers are thin glue over this.
+export function moveBox(box, W, H, dx, dy, minW = 24, minH = 16) {
+  return clampBox({ ...box, x: box.x + dx, y: box.y + dy }, W, H, minW, minH);
+}
+export function resizeBox(box, W, H, dw, dh, minW = 24, minH = 16) {
+  return clampBox({ ...box, w: box.w + dw, h: box.h + dh }, W, H, minW, minH);
+}
+export function clampBox(box, W, H, minW = 24, minH = 16) {
+  const w = Math.max(minW, Math.min(box.w, W));
+  const h = Math.max(minH, Math.min(box.h, H));
+  return {
+    x: Math.max(0, Math.min(box.x, W - w)),
+    y: Math.max(0, Math.min(box.y, H - h)),
+    w,
+    h,
+  };
 }
 export async function addVisualPlaceholder(pdfDoc, { pageIndex, rect, text, imageBytes }) {
   const page = pdfDoc.getPage(pageIndex);
@@ -45,7 +88,13 @@ export async function addVisualPlaceholder(pdfDoc, { pageIndex, rect, text, imag
     resourcesExtra = ` /XObject: context.obj({ Im0: img.ref })`;
     drawImage = `q ${w - 4} 0 0 ${h - 18} 2 2 cm /Im0 Do Q\n`;
   }
-  const content = `q\n0.5 w\n0 0 ${w} ${h} re S\n${drawImage}BT /F1 10 Tf 6 22 Td (${safe}) Tj ET\nQ`;
+  // Brand mark left of the text when no uploaded image fills the box (pure
+  // vector ops, no XObject needed). Skipped for narrow boxes and image mode.
+  const logoSize = Math.min(36, h - 12);
+  const withLogo = !imageBytes && w >= logoSize + 56 && logoSize > 12;
+  const textX = withLogo ? 4 + logoSize + 8 : 6;
+  const logo = withLogo ? logoOps(4, (h - logoSize) / 2, logoSize / 32) + '\n' : '';
+  const content = `q\n0.5 w\n0 0 ${w} ${h} re S\n${drawImage}${logo}BT /F1 10 Tf ${textX} 22 Td (${safe}) Tj ET\nQ`;
   const stream = context.flateStream(content);
   stream.dict.set(PDFName.of('Type'), PDFName.of('XObject'));
   stream.dict.set(PDFName.of('Subtype'), PDFName.of('Form'));

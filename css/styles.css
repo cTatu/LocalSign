@@ -141,10 +141,25 @@ button#signBtn:hover { background: var(--navy-hover); }
   position: absolute;
   border: 2px dashed var(--bronze);
   background: rgba(180, 83, 9, 0.1);
-  pointer-events: none;
+  cursor: move;
+  touch-action: none;
+}
+#selHandle {
+  position: absolute;
+  right: -14px;
+  bottom: -14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bronze);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  cursor: nwse-resize;
+  touch-action: none;
 }
 .previewSide { display: flex; flex-direction: column; gap: 0.5rem; }
 .hint { font-size: 0.85rem; color: #555; max-width: 220px; }
+#docCard .hint { white-space: nowrap; }
 #statusEl {
   white-space: pre-wrap;
   background: var(--mist);
