@@ -19,6 +19,10 @@ const ES = {
   s2_cert: 'Archivo .p12 / .pfx',
   s2_pass: 'Contraseña',
   s2_pass_ph: 'Contraseña del P12',
+  choose: 'Elige archivo',
+  choose_cert: 'Elige certificado',
+  file_none: 'Ningún archivo elegido',
+  drop_hint: '…o arrastra tu PDF a esta tarjeta.',
   s3: '3. Vista previa y firma',
   page_label: 'Página',
   hint: 'Arrastra un rectángulo en la vista previa para la zona de firma. Un clic coloca un recuadro estándar. Si no eliges nada, se usa la esquina inferior derecha.',
@@ -82,6 +86,10 @@ const EN = {
   s2_cert: '.p12 / .pfx file',
   s2_pass: 'Password',
   s2_pass_ph: 'P12 password',
+  choose: 'Choose file',
+  choose_cert: 'Choose certificate',
+  file_none: 'No file chosen',
+  drop_hint: '…or drag & drop your PDF anywhere on this card.',
   s3: '3. Preview & sign',
   page_label: 'Page',
   hint: 'Drag a rectangle on the preview for the signature zone. A simple click places a default-size box. Leave it to use the bottom-right corner.',
@@ -145,6 +153,10 @@ const CA = {
   s2_cert: 'Fitxer .p12 / .pfx',
   s2_pass: 'Contrasenya',
   s2_pass_ph: 'Contrasenya del P12',
+  choose: 'Tria el fitxer',
+  choose_cert: 'Tria el certificat',
+  file_none: 'Cap fitxer triat',
+  drop_hint: '…o arrossega el PDF a aquesta targeta.',
   s3: '3. Previsualització i signatura',
   page_label: 'Pàgina',
   hint: 'Arrossega un rectangle a la previsualització per a la zona de signatura. Un clic col·loca un requadre estàndard. Si no tries res, s\u2019usa la cantonada inferior dreta.',
@@ -200,8 +212,8 @@ export const STRINGS = { es: ES, en: EN, ca: CA };
 let current = 'en';
 
 export function pickLang(stored, navLang, urlLang) {
-  if (stored && LANGS.includes(stored)) return stored;
   if (urlLang && LANGS.includes(urlLang)) return urlLang;
+  if (stored && LANGS.includes(stored)) return stored;
   const base = (navLang || '').split('-')[0].toLowerCase();
   if (base === 'ca') return 'ca';
   if (base === 'es') return 'es';

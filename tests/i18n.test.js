@@ -28,9 +28,9 @@ describe('i18n parity', () => {
   it('detectLang is a supported language', () => {
     expect(LANGS.includes(detectLang())).toBe(true);
   });
-  it('pickLang prefers stored, then url, then browser', () => {
-    expect(pickLang('ca', 'es-ES', 'en')).toBe('ca');
-    expect(pickLang(null, 'es-ES', 'en')).toBe('en');
+  it('pickLang prefers url, then stored, then browser', () => {
+    expect(pickLang('ca', 'es-ES', 'en')).toBe('en');
+    expect(pickLang('ca', 'es-ES', null)).toBe('ca');
     expect(pickLang(null, 'es-ES', null)).toBe('es');
     expect(pickLang(null, 'ca-ES', null)).toBe('ca');
     expect(pickLang(null, 'fr-FR', null)).toBe('en');
