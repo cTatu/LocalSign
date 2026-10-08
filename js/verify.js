@@ -18,10 +18,10 @@ export function preCheck(signedBytes) {
   const text = scanAll(signedBytes);
   const brM = text.match(/\/ByteRange\s*(\[[^\]]+\])/);
   const checks = [
-    { name: 'ByteRange present + 4th==Z-Y', pass: !!brM && validateByteRangeFourth(brM[1], signedBytes.length), detail: '4th value must equal Z-Y' },
-    { name: 'SubFilter adbe.pkcs7.detached', pass: /\/SubFilter\s*\/adbe\.pkcs7\.detached/.test(text), detail: 'required for PAdES' },
-    { name: 'Filter Adobe.PPKLite', pass: /\/Filter\s*\/Adobe\.PPKLite/.test(text), detail: 'required' },
-    { name: 'No CRL/OCSP in MVP', pass: true, detail: 'revocation not checked — normative is Adobe Reader' },
+    { nameKey: 'chk_br', pass: !!brM && validateByteRangeFourth(brM[1], signedBytes.length), detailKey: 'chk_br_d' },
+    { nameKey: 'chk_sub', pass: /\/SubFilter\s*\/adbe\.pkcs7\.detached/.test(text), detailKey: 'chk_sub_d' },
+    { nameKey: 'chk_filter', pass: /\/Filter\s*\/Adobe\.PPKLite/.test(text), detailKey: 'chk_filter_d' },
+    { nameKey: 'chk_noocsp', pass: true, detailKey: 'chk_noocsp_d' },
   ];
-  return { checks, label: 'Pre-check only — trust decision is Adobe Reader' };
+  return { checks, labelKey: 'precheck_label' };
 }

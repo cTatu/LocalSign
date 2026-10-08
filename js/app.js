@@ -7,8 +7,9 @@ import { addVisualPlaceholder, buildRectBottomRight, cssToPdfRect, normalizeDrag
 import { appendPlaceholder, patchByteRange, patchContents } from './byterange.js';
 import { hashByteRange, buildCmsDer } from './cms.js';
 import { preCheck, sanitizeBase } from './verify.js';
-import { ERRORS } from './errors.js';
 import { wakeBackend } from './api.js';
+import { t, tx, initLang, setLang } from './i18n.js';
+initLang();
 wakeBackend();
 const $ = (id) => document.getElementById(id);
 // Preview render scale: canvas px per PDF point. Click/drag mapping divides
@@ -17,7 +18,13 @@ const $ = (id) => document.getElementById(id);
 const PREVIEW_SCALE = 0.7;
 const PLACED_W_PT = 150;
 const PLACED_H_PT = 50;
-$('statusEl').textContent = 'Ready — select a PDF and your .p12 to begin.';
+$('statusEl').textContent = t('boot');
+document.querySelectorAll('[data-lang-btn]').forEach((b) => {
+  b.addEventListener('click', () => {
+    setLang(b.getAttribute('data-lang-btn'));
+    $('statusEl').textContent = t('boot');
+  });
+});
 pdfjs.GlobalWorkerOptions.workerSrc = '../lib/pdf.worker.min.mjs';
 async function renderPreview(pdfBytes, pageNum) {
   // NOTE: pdf.js transfers (neuters) the buffer handed to getDocument, so it
@@ -105,7 +112,7 @@ async function previewFile(pageNum) {
     clearSelection();
     await renderPreview(buf, pageNum);
   } catch (e) {
-    status.textContent = ERRORS[e.message] || `${e.name || 'Error'}: ${e.message || e}`;
+    status.textContent = t(e.message) !== e.message ? t(e.message) : `${e.name || 'Error'}: ${e.message || e}`;
   }
 }
 $('fileInput').addEventListener('change', () => { previewFile(1); });
@@ -125,18 +132,18 @@ $('signBtn').addEventListener('click', async () => {
     if (!window.isSecureContext) throw new Error('INSECURE_CONTEXT');
     const f = $('fileInput').files[0];
     if (!f) throw new Error('NO_FILE');
-    at('Reading PDF');
+    at(t('st_reading'));
     const buf = new Uint8Array(await f.arrayBuffer());
     const g = checkFileGuards(buf, f.name);
     if (!g.ok) throw new Error(g.code);
-    at('Rendering preview');
+    at(t('st_preview'));
     await renderPreview(buf, 1);
     const p12File = $('certInput').files[0];
     if (!p12File) throw new Error('BAD_PASSWORD_OR_CORRUPT_P12');
-    at('Reading certificate');
+    at(t('st_cert'));
     certState = await loadP12(new Uint8Array(await p12File.arrayBuffer()), $('certPass').value);
-    if (new Date() < certState.notBefore || new Date() > certState.notAfter) status.textContent = 'Warning: cert outside validity — proceeding.\n';
-    at('Preparing signature appearance');
+    if (new Date() < certState.notBefore || new Date() > certState.notAfter) status.textContent = t('warn_expired');
+    at(t('st_appear'));
     const pdfDoc = await PDFDocument.load(buf);
     const pages = pdfDoc.getPages();
     const selIdx = Math.max(0, (parseInt(($('pageSelect').value || '1'), 10) - 1));
@@ -157,29 +164,29 @@ $('signBtn').addEventListener('click', async () => {
     if (previewPos) {
       rect = cssToPdfRect(previewPos.x, previewPos.y, previewPos.w, previewPos.h, previewPos.scale, crop);
     }
-    const { widgetObjNum, apObjNum, pageObjNum } = await addVisualPlaceholder(pdfDoc, { pageIndex: pageIdx, rect, text: certState.subjectCN || 'Signer' });
-    at('Building signature');
+    const { widgetObjNum, apObjNum, pageObjNum } = await addVisualPlaceholder(pdfDoc, { pageIndex: pageIdx, rect, text: tx('signed_by', { n: certState.subjectCN || 'Signer' }) });
+    at(t('st_build'));
     const baseBytes = await saveBase(pdfDoc);
     const meta = appendPlaceholder(baseBytes, { widgetObjNum, rect, pageObjNum, apObjNum });
     // PAdES order: ByteRange values are part of the hashed [0,X) segment, so
     // the FINAL values must be written BEFORE hashing (same-width, in place).
     const gapFinal = patchByteRange(meta.withGap, meta);
-    at('Hashing document');
+    at(t('st_hash'));
     const hash = await hashByteRange(gapFinal, meta.X, meta.Y, meta.Z);
-    at('Signing');
+    at(t('st_sign'));
     const cms = buildCmsDer(hash, certState);
     const signed = patchContents(gapFinal, cms, meta);
-    at('Verifying and downloading');
+    at(t('st_verify'));
     const pc = preCheck(signed);
     const blob = new Blob([signed], { type: 'application/pdf' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `${sanitizeBase(f.name)}-signed.pdf`;
     a.click();
-    status.textContent += pc.label + '\n' + pc.checks.map(c => `${c.pass ? 'PASS' : 'FAIL'} ${c.name}: ${c.detail}`).join('\n');
+    status.textContent += t(pc.labelKey) + '\n' + pc.checks.map(c => `${c.pass ? 'PASS' : 'FAIL'} ${t(c.nameKey)}: ${t(c.detailKey)}`).join('\n');
   } catch (e) {
-    const known = ERRORS[e.message];
-    status.textContent = known || `Failed at step "${stage}": ${e.name || 'Error'}: ${e.message || e}`;
+    const known = t(e.message) !== e.message ? t(e.message) : null;
+    status.textContent = known || tx('fail_template', { stage, n: e.name || 'Error', m: e.message || e });
   } finally {
     clearCert(certState); certState = null;
     const pw = $('certPass'); if (pw) pw.value = '';

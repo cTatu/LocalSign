@@ -21,6 +21,29 @@ body {
 h1 { font-size: 1.8rem; margin-bottom: 0.25rem; }
 h1.brand { display: flex; align-items: center; gap: 0.6rem; color: var(--navy); }
 h1.brand img { display: block; }
+.langbar { display: flex; gap: 0.4rem; justify-content: flex-end; margin-bottom: 0.5rem; }
+.langbar button {
+  font: inherit;
+  font-size: 0.8rem;
+  background: var(--mist);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 0.25rem 0.75rem;
+  cursor: pointer;
+}
+.langbar button.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+.badges { list-style: none; display: flex; gap: 0.5rem; flex-wrap: wrap; padding: 0; margin: 0.75rem 0; }
+.badges li {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--navy);
+  background: var(--mist);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 0.3rem 0.85rem;
+}
+.badges li:first-child { color: var(--green); }
 .tagline { color: var(--ink); opacity: 0.75; margin-top: 0; }
 h2 { font-size: 1.05rem; margin: 0 0 0.75rem; color: var(--ink); }
 #privacyNote {

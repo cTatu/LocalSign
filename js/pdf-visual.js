@@ -35,7 +35,7 @@ export async function addVisualPlaceholder(pdfDoc, { pageIndex, rect, text, imag
   const [x1, y1, x2, y2] = rect;
   const w = x2 - x1; const h = y2 - y1;
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const safe = escapePdfText(`Signed by ${text} (client clock, unverified)`);
+  const safe = escapePdfText(text);
   let resourcesExtra = '';
   let drawImage = '';
   let fontDict = `Font: context.obj({ F1: font.ref })`;
