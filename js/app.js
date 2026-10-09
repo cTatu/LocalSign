@@ -6,11 +6,37 @@ import { loadP12, clearCert } from './cert.js';
 import { addVisualPlaceholder, buildRectBottomRight, cssToPdfRect, moveBox, resizeBox, clampBox, saveBase } from './pdf-visual.js';
 import { appendPlaceholder, patchByteRange, patchContents } from './byterange.js';
 import { hashByteRange, buildCmsDer } from './cms.js';
-import { preCheck, sanitizeBase } from './verify.js';
+import { sanitizeBase } from './verify.js';
+import { verifySigned } from './verify-full.js';
 import { wakeBackend } from './api.js';
 import { t, tx, initLang, setLang } from './i18n.js';
 initLang();
 wakeBackend();
+
+function renderVerdict(el, result) {
+  const word = result.verdict === 'VALID' ? t('pass_word')
+    : result.verdict === 'INVALID' ? t('fail_word') : t('na_word');
+  const cls = result.verdict === 'VALID' ? 'valid'
+    : result.verdict === 'INVALID' ? 'invalid' : 'incomplete';
+  const banner = result.verdict === 'VALID' ? t('verdict_valid')
+    : result.verdict === 'INVALID' ? t('verdict_invalid') : t('verdict_incomplete');
+  el.innerHTML = '';
+  const head = document.createElement('div');
+  head.className = `vbanner ${cls}`;
+  head.textContent = `${word} — ${banner}`;
+  el.appendChild(head);
+  const ul = document.createElement('ul');
+  for (const c of result.checks) {
+    const li = document.createElement('li');
+    const mark = document.createElement('span');
+    mark.className = c.pass === true ? 'ok' : c.pass === false ? 'bad' : 'na';
+    mark.textContent = c.pass === true ? t('pass_word') : c.pass === false ? t('fail_word') : t('na_word');
+    li.appendChild(mark);
+    li.appendChild(document.createTextNode(` ${t(c.key)}`));
+    ul.appendChild(li);
+  }
+  el.appendChild(ul);
+}
 const $ = (id) => document.getElementById(id);
 // Preview render scale: canvas px per PDF point. Click/drag mapping divides
 // by this same constant (see cssToPdfRect), so placement stays exact.
@@ -206,6 +232,22 @@ $('pageSelect').addEventListener('change', () => {
     }
   });
 }
+$('verifyInput').addEventListener('change', () => { showFileName('verifyInput', 'verifyName'); });
+$('verifyBtn').addEventListener('click', async () => {
+  const status = $('statusEl');
+  const panel = $('verdict');
+  try {
+    const f = $('verifyInput').files[0];
+    if (!f) throw new Error('NO_FILE');
+    status.textContent = `${t('st_verify')}…`;
+    const buf = new Uint8Array(await f.arrayBuffer());
+    renderVerdict(panel, await verifySigned(buf));
+    status.textContent = t('st_done');
+  } catch (e) {
+    const known = t(e.message) !== e.message ? t(e.message) : null;
+    status.textContent = known || tx('fail_template', { stage: t('st_verify'), n: e.name || 'Error', m: e.message || e });
+  }
+});
 let certState = null;
 $('signBtn').addEventListener('click', async () => {
   const status = $('statusEl');
@@ -263,13 +305,14 @@ $('signBtn').addEventListener('click', async () => {
     const cms = buildCmsDer(hash, certState);
     const signed = patchContents(gapFinal, cms, meta);
     at(t('st_verify'));
-    const pc = preCheck(signed);
+    const verdict = await verifySigned(signed);
     const blob = new Blob([signed], { type: 'application/pdf' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `${sanitizeBase(f.name)}-signed.pdf`;
     a.click();
-    status.textContent += t(pc.labelKey) + '\n' + pc.checks.map(c => `${c.pass ? 'PASS' : 'FAIL'} ${t(c.nameKey)}: ${t(c.detailKey)}`).join('\n');
+    renderVerdict($('verdict'), verdict);
+    status.textContent = t('st_done');
   } catch (e) {
     const known = t(e.message) !== e.message ? t(e.message) : null;
     status.textContent = known || tx('fail_template', { stage, n: e.name || 'Error', m: e.message || e });

@@ -69,6 +69,14 @@
 </div>
 </section>
 <div class="actionBar"><button id="signBtn" data-i18n="sign">Sign</button></div>
+<section class="card">
+<h2 data-i18n="s4">4. Verify</h2>
+<label class="file"><span data-i18n="v_file">Signed PDF to check</span>
+<span class="pickrow"><span class="pickBtn" data-i18n="choose">Choose file</span><span class="fileName" id="verifyName" data-i18n="file_none">No file chosen</span></span>
+<input type="file" id="verifyInput" class="sr" accept=".pdf"/></label>
+<p><button id="verifyBtn" class="ghostBtn" data-i18n="verify_btn">Verify</button></p>
+<div id="verdict" aria-live="polite"></div>
+</section>
 <h2 data-i18n="status_h">Status</h2>
 <pre id="statusEl">Loading…</pre>
 <details class="seo">

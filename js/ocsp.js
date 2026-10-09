@@ -353,14 +353,14 @@ export async function checkOcsp(certDer, issuerDer, opts) {
   } catch {
     return { state: 'unchecked', reason: 'REQ_BUILD' };
   }
-  let body = '';
-  for (let i = 0; i < req.length; i++) body += String.fromCharCode(req[i]);
   for (const u of urls.slice(0, 3)) {
     try {
+      // Body MUST stay a byte array: a JS string body would be UTF-8
+      // encoded, mangling every request byte >= 0x80 (hashes always are).
       const r = await fetchFn(relayBase + '?url=' + encodeURIComponent(u), {
         method: 'POST',
         headers: { 'Content-Type': 'application/ocsp-request' },
-        body,
+        body: req,
       });
       if (!r.ok) continue;
       const buf = new Uint8Array(await r.arrayBuffer());

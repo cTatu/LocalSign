@@ -125,6 +125,33 @@ button#signBtn:hover { background: var(--navy-hover); }
   padding: 0.75rem 0;
 }
 .actionBar button#signBtn { margin-top: 0; width: 100%; }
+.ghostBtn {
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  background: var(--paper);
+  color: var(--navy);
+  border: 2px solid var(--navy);
+  border-radius: 8px;
+  padding: 0.45rem 1.2rem;
+  cursor: pointer;
+}
+.ghostBtn:hover { background: var(--mist); }
+#verdict { margin-top: 0.75rem; font-size: 0.9rem; }
+#verdict .vbanner {
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 0.5rem;
+}
+#verdict .vbanner.valid { background: #e6f4ed; color: var(--green); border: 1px solid var(--green); }
+#verdict .vbanner.invalid { background: #fdecec; color: #b42318; border: 1px solid #b42318; }
+#verdict .vbanner.incomplete { background: #fffaeb; color: #935705; border: 1px solid #b54708; }
+#verdict ul { list-style: none; padding: 0; margin: 0; }
+#verdict li { padding: 0.2rem 0; }
+#verdict .ok { color: var(--green); font-weight: 700; }
+#verdict .bad { color: #b42318; font-weight: 700; }
+#verdict .na { color: #667085; font-weight: 700; }
 .previewRow { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
 .previewWrap { position: relative; display: inline-block; }
 #previewCanvas {
